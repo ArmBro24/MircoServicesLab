@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: pg_db
+    environment:
+      POSTGRES_USER: Arm
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-multiple-db.sql:/docker-entrypoint-initdb.d/init-multiple-db.sql
+    networks:
+      - springnet
+
+  eurekaservice:
+    build:
+      context: ./EurekaService
+    container_name: eurekaservice
+    ports:
+      - "8755:8755"
+    networks:
+      - springnet
+
+  userservice:
+    build:
+      context: ./UserServiceLab
+    container_name: userservice
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pg_db:5432/UserServiceLabDB
+      SPRING_DATASOURCE_USERNAME: Arm
+      SPRING_DATASOURCE_PASSWORD: 1234
+    depends_on:
+      - postgres
+      - eurekaservice
+    networks:
+      - springnet
+
+  orderservice:
+    build:
+      context: ./OrderServiceLab
+    container_name: orderservice
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pg_db:5432/OrderServiceLabDB
+      SPRING_DATASOURCE_USERNAME: Arm
+      SPRING_DATASOURCE_PASSWORD: 1234
+    depends_on:
+      - postgres
+      - eurekaservice
+    networks:
+      - springnet
+
+  apigatway:
+    build:
+      context: ./APIGATWAY
+    container_name: apigatway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - userservice
+      - orderservice
+      - eurekaservice
+    networks:
+      - springnet
+
+volumes:
+  pgdata:
+
+networks:
+  springnet:
